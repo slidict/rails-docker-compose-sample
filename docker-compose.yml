@@ -1,0 +1,33 @@
+networks:
+  app-tier:
+    driver: bridge
+services:
+  rails: &rails
+    tty: true
+    stdin_open: true
+    environment:
+      - EDITOR=vi
+      - RAILS_ENV=
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: "sh entrypoint.local.sh"
+    ports:
+      - 3000:3000
+    networks:
+      - app-tier
+  rspec:
+    <<: *rails
+    ports:
+      - 5000:3000
+    command: "sh entrypoint.local.sh"
+    depends_on:
+      - rails
+  redis:
+    image: redis:6.0.14  # Azure Redis version
+    restart: always
+    networks:
+      - app-tier
