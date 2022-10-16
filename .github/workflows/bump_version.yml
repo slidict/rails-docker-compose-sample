@@ -1,0 +1,46 @@
+name: BumpVersion
+on:
+  push:
+    branches:
+      - main
+jobs:
+  bump_version:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 0
+
+    - name: Github Tag Bump
+      uses: anothrNick/github-tag-action@1.52.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEFAULT_BUMP: patch
+        WITH_V: true
+
+    - name: Delete draft_release_tags
+      run: |
+        set -xe
+        gh release list | cut -f1 > draft_release_tags
+        for release_tag in $(gh release list --exclude-drafts | cut -f1)
+        do
+          echo -e "$(cat draft_release_tags |grep -v $release_tag)" > draft_release_tags
+        done
+        if [ ! -s draft_release_tags ]; then
+          for tag in $(cat draft_release_tags)
+          do
+            [ -n "$tag" ] && gh release delete $tag
+          done
+        fi
+
+    - name: Create release
+      run: |
+        LATEST_TAG=$(git tag -l --sort -authordate| head -n 1 | cut -f1 -d" ")
+        LAST_RELEASE_TAG=$(gh release list --exclude-drafts --limit 1 | cut -f1)
+        echo -e "## What's Changed" > changeslog
+        git log $LAST_RELEASE_TAG..$LATEST_TAG --oneline --pretty="%s" | grep -v Merge | sed 's/^/* /g' >> changeslog
+        echo -e "" >> changeslog
+        echo -e "**Full Changelog**: https://github.com/slidict/rails-docker-compose-sample/compare/$LAST_RELEASE_TAG...$LATEST_TAG" >> changeslog
+        gh release create $LATEST_TAG -F changeslog --draft

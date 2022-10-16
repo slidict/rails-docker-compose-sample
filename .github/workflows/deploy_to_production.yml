@@ -1,0 +1,14 @@
+name: DeployToProduction
+on:
+  release:
+    types: [released]
+jobs:
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Deployed
+        run: |
+          echo "ok"
